@@ -1,0 +1,12 @@
+0x80080016 The activation requires that the RunAs value for the application is Activate As Activator. Activate As Activator
+
+IShellWindow appid {9BA05972-F6A8-11CF-A442-00A0C90A8F39}
+
+HKEY_LOCAL_MACHINE\Software\Classes\CLSID
+HKLM\SOFTARE\CLASSES\AppID\9B...
+
+In the appID of ShellWindow, must delete the RunAs Key = Interactive User!!!http://blogs.msdn.com/b/jigarme/archive/2007/10/09/what-is-appid.aspx
+
+1. HKLM\Software\Classes\CLSID\guid\localizedstring
+2. "                               \  "            \enabed
+3. delete the HKCR\AppID\9ba059.....\RunAs REG_SZ "Interactive User" value, but first change permission, and this moment you are DOOOOOOMED, because shdocvw becomes unregistered QQQQQQQQQ you'll have to restore IE><><>< but I have saved you->use AAAAA.reg!!

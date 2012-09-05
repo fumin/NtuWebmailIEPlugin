@@ -1,0 +1,13 @@
+Remember to run visual Studio tools with "Administrator privilege!!"
+
+>cd C:\Program Files\Microsoft Visual Studio 10.0\vc
+
+>midl.exe /out D:\Desktop\midl\midl D:\Desktop\midl\midl\testmidl.idl
+
+
+The result is the creation of 5 new files (for which only three will need to be included in our example):
+  dlldata.c
+  testmidl.h  // extern "C" CLID_ISUM
+  testmidl.tlb  //our type library
+  testmidl_i.c
+  testmidl_p.c  //defines the global variable CLID_ISUM

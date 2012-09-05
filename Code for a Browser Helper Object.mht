@@ -1,0 +1,727 @@
+From: "Saved by Windows Internet Explorer 8"
+Subject: Code for a Browser Helper Object
+Date: Wed, 16 Mar 2011 11:34:31 +0800
+MIME-Version: 1.0
+Content-Type: multipart/related;
+	type="text/html";
+	boundary="----=_NextPart_000_0000_01CBE3CE.1E3355C0"
+X-MimeOLE: Produced By Microsoft MimeOLE V6.1.7600.16385
+
+This is a multi-part message in MIME format.
+
+------=_NextPart_000_0000_01CBE3CE.1E3355C0
+Content-Type: text/html;
+	charset="big5"
+Content-Transfer-Encoding: quoted-printable
+Content-Location: http://www.wischik.com/lu/programmer/bho.html
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" =
+"http://www.w3c.org/TR/1999/REC-html401-19991224/loose.dtd">
+<HTML xmlns=3D"http://www.w3.org/1999/xhtml"><HEAD><TITLE>Code for a =
+Browser Helper Object</TITLE>
+<META content=3D"text/html; charset=3Dbig5" http-equiv=3DContent-Type>
+<META name=3Ddescription content=3D"Source code for a Browser Helper =
+Object ("=20
+Explorer? Internet for plug-in?)>
+<META name=3Dkeywords=20
+content=3D"IDispatch, IOleWithSite, BHO, Browser Helper Object, plugin, =
+IE, Internet Explorer, greasemonkey">
+<SCRIPT type=3Dtext/javascript=20
+src=3D"http://www.wischik.com/editable/editable.js"></SCRIPT>
+<LINK rel=3Dstylesheet type=3Dtext/css=20
+href=3D"http://www.wischik.com/lu/programmer/index.css">
+<META name=3DGENERATOR content=3D"MSHTML 8.00.7600.16444"></HEAD>
+<BODY>
+<DIV id=3Dtop><A =
+href=3D"http://www.wischik.com/lu/programmer/changes.xml"><IMG=20
+src=3D"http://www.wischik.com/lu/programmer/index-rss.gif" width=3D12 =
+height=3D12></A>=20
+
+<H1><A href=3D"http://www.wischik.com/lu/programmer/">Programmer</A> =
+&raquo; Browser=20
+Helper Object <BR></H1></DIV>
+<DIV id=3Dmiddle>
+<DIV>
+<H2>Browser Helper Object ("plug-in") for IE</H2>
+<P>This page has source code for a minimal C++ Browser Helper Object for =
+
+Internet Explorer. It intercepts keyboard and mouse events, and changes =
+the=20
+page's background color.</P>
+<UL>
+  <LI><STRONG>Download</STRONG>: <A=20
+  href=3D"http://www.wischik.com/lu/programmer/bho.zip">bho.zip</A> =
+(166k,=20
+  includes source code, c++/win32, with project files for VS)</LI>
+  <LI><STRONG>Install:</STRONG> at a command prompt, <FONT size=3D2=20
+  face=3D"'Courier New', Courier, monospace">regsvr32 bho.dll</FONT>. =
+Then launch=20
+  IE and see what happens! <BR></LI>
+  <LI><STRONG>Uninstall:</STRONG> at a command prompt, <FONT size=3D2=20
+  face=3D"'Courier New', Courier, monospace">regsvr32 /u =
+bho.dll</FONT></LI></UL>
+<P>This code is heavily based on the code at&nbsp;<A=20
+href=3D"http://www.adp-gmbh.ch/win/com/bho.html">http://www.adp-gmbh.ch/w=
+in/com/bho.html</A>.=20
+What I've done is turn it into a complete project, one that compiles and =
+builds=20
+cleanly, I've added COM registration stuff, and I updated bits of the =
+code to=20
+use native interfaces (e.g. IHTMLEvents) instead of querying everything =
+through=20
+IDispatch.</P>
+<HR>
+
+<H2>Source code</H2>What follows is the "bho.cpp" source code file. You =
+also=20
+need the "bho.def" module definition file, which is part of the download =
+link=20
+above. <BR><BR><PRE editable=3D"code"><SPAN style=3D"COLOR: =
+blue">#include</SPAN> &lt;windows.h&gt;
+<SPAN style=3D"COLOR: blue">#include</SPAN> &lt;tchar.h&gt;
+<SPAN style=3D"COLOR: blue">#include</SPAN> &lt;exdisp.h&gt;
+<SPAN style=3D"COLOR: blue">#include</SPAN> &lt;exdispid.h&gt;
+<SPAN style=3D"COLOR: blue">#include</SPAN> &lt;mshtml.h&gt;
+<SPAN style=3D"COLOR: blue">#include</SPAN> &lt;mshtmdid.h&gt;
+<SPAN style=3D"COLOR: blue">#include</SPAN> &lt;shlwapi.h&gt;
+
+HINSTANCE hInstance;
+LONG gref=3D<SPAN style=3D"COLOR: rgb(0,10,100)">0</SPAN>;
+<SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">const</SPAN> CLSID =
+BhoCLSID =3D {<SPAN style=3D"COLOR: rgb(0,10,100)">0</SPAN>xC9C4<SPAN =
+style=3D"COLOR: rgb(0,10,100)">2510</SPAN>,<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>x9B4<SPAN style=3D"COLOR: =
+rgb(0,10,100)">1</SPAN>,<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>x4<SPAN style=3D"COLOR: =
+rgb(0,10,100)">2</SPAN>c1,<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>x9D,<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>xCD,<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>x7<SPAN style=3D"COLOR: =
+rgb(0,10,100)">2</SPAN>,<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>x8<SPAN style=3D"COLOR: =
+rgb(0,10,100)">2</SPAN>,<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>xA2,<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>xD0,<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>x7C,<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>x6<SPAN style=3D"COLOR: rgb(0,10,100)">1</SPAN>};
+<SPAN style=3D"COLOR: blue">#define</SPAN> BhoCLSIDs  =
+_T("{C9C42510-9B41-42c1-9DCD-7282A2D07C61}")
+
+
+
+<SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">class</SPAN> BHO : <SPAN =
+style=3D"COLOR: black; FONT-WEIGHT: bold">public</SPAN> IObjectWithSite, =
+<SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">public</SPAN> IDispatch=20
+{ <SPAN style=3D"COLOR: blue">long</SPAN> ref;
+  IWebBrowser2* webBrowser;
+  IHTMLDocument* doc; IHTMLDocument2 *doc2;
+  IHTMLWindow2 *win2;
+<SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">public:</SPAN>
+  <SPAN style=3D"FONT-STYLE: italic; COLOR: green">// IUnknown...</SPAN>
+  <SPAN style=3D"COLOR: blue">HRESULT</SPAN> <SPAN style=3D"COLOR: =
+blue">STDMETHODCALLTYPE</SPAN> QueryInterface(REFIID riid, <SPAN =
+style=3D"COLOR: blue">void</SPAN> **ppv) {<SPAN style=3D"COLOR: black; =
+FONT-WEIGHT: bold">if</SPAN> (riid=3D=3DIID_IUnknown) =
+*ppv=3Dstatic_cast&lt;BHO*&gt;(this); <SPAN style=3D"COLOR: black; =
+FONT-WEIGHT: bold">else</SPAN> <SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">if</SPAN> (riid=3D=3DIID_IObjectWithSite) =
+*ppv=3Dstatic_cast&lt;IObjectWithSite*&gt;(this); <SPAN style=3D"COLOR: =
+black; FONT-WEIGHT: bold">else</SPAN> <SPAN style=3D"COLOR: black; =
+FONT-WEIGHT: bold">if</SPAN> (riid=3D=3DIID_IDispatch) =
+*ppv=3Dstatic_cast&lt;IDispatch*&gt;(this); <SPAN style=3D"COLOR: black; =
+FONT-WEIGHT: bold">else</SPAN> <SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">return</SPAN> E_NOINTERFACE; AddRef(); <SPAN style=3D"COLOR: =
+black; FONT-WEIGHT: bold">return</SPAN> <SPAN style=3D"COLOR: =
+rgb(0,10,100)">S_OK</SPAN>;}=20
+  ULONG <SPAN style=3D"COLOR: blue">STDMETHODCALLTYPE</SPAN> AddRef() =
+{InterlockedIncrement(&amp;gref); <SPAN style=3D"COLOR: black; =
+FONT-WEIGHT: bold">return</SPAN> InterlockedIncrement(&amp;ref);}
+  ULONG <SPAN style=3D"COLOR: blue">STDMETHODCALLTYPE</SPAN> Release() =
+{<SPAN style=3D"COLOR: blue">int</SPAN> =
+tmp=3DInterlockedDecrement(&amp;ref); <SPAN style=3D"COLOR: black; =
+FONT-WEIGHT: bold">if</SPAN> (tmp=3D=3D<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>) delete this; InterlockedDecrement(&amp;gref); =
+<SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">return</SPAN> tmp;}
+
+  <SPAN style=3D"FONT-STYLE: italic; COLOR: green">// =
+IDispatch...</SPAN>
+  <SPAN style=3D"COLOR: blue">HRESULT</SPAN> <SPAN style=3D"COLOR: =
+blue">STDMETHODCALLTYPE</SPAN> GetTypeInfoCount(unsigned <SPAN =
+style=3D"COLOR: blue">int</SPAN> FAR* pctinfo) {*pctinfo=3D<SPAN =
+style=3D"COLOR: rgb(0,10,100)">1</SPAN>; <SPAN style=3D"COLOR: black; =
+FONT-WEIGHT: bold">return</SPAN> NOERROR;}
+  <SPAN style=3D"COLOR: blue">HRESULT</SPAN> <SPAN style=3D"COLOR: =
+blue">STDMETHODCALLTYPE</SPAN> GetTypeInfo(unsigned <SPAN =
+style=3D"COLOR: blue">int</SPAN> iTInfo, LCID lcid, ITypeInfo FAR* FAR*  =
+ppTInfo) {<SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">return</SPAN> =
+NOERROR;}
+  <SPAN style=3D"COLOR: blue">HRESULT</SPAN> <SPAN style=3D"COLOR: =
+blue">STDMETHODCALLTYPE</SPAN> GetIDsOfNames(REFIID riid, OLECHAR FAR* =
+FAR* rgszNames, unsigned <SPAN style=3D"COLOR: blue">int</SPAN> cNames, =
+LCID lcid, DISPID FAR* rgDispId) {<SPAN style=3D"COLOR: black; =
+FONT-WEIGHT: bold">return</SPAN> NOERROR;}
+ =20
+  <SPAN style=3D"COLOR: blue">HRESULT</SPAN> <SPAN style=3D"COLOR: =
+blue">STDMETHODCALLTYPE</SPAN> Invoke(DISPID dispIdMember, REFIID riid, =
+LCID lcid, WORD wFlags, DISPPARAMS FAR* pDispParams, VARIANT FAR* =
+pVarResult, EXCEPINFO FAR* pExcepInfo, unsigned <SPAN style=3D"COLOR: =
+blue">int</SPAN> FAR* puArgErr)
+  {=20
+    <SPAN style=3D"FONT-STYLE: italic; COLOR: green">// =
+DISPID_DOCUMENTCOMPLETE: This is the earliest point we can obtain the =
+"document" interface</SPAN>
+    <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> =
+(dispIdMember=3D=3DDISPID_DOCUMENTCOMPLETE)
+    { <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> =
+(!webBrowser) <SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">return</SPAN> E_FAIL;=20
+      IDispatch *idisp; webBrowser-&gt;get_Document(&amp;idisp);
+      <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> (idisp =
+&amp;&amp; !doc) idisp-&gt;QueryInterface(IID_IHTMLDocument, (<SPAN =
+style=3D"COLOR: blue">void</SPAN>**)&amp;doc);
+      <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> (idisp =
+&amp;&amp; !doc2) idisp-&gt;QueryInterface(IID_IHTMLDocument2, (<SPAN =
+style=3D"COLOR: blue">void</SPAN>**)&amp;doc2);
+      <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> (doc2 =
+&amp;&amp; !win2) doc2-&gt;get_parentWindow(&amp;win2);
+      IConnectionPointContainer *cpc=3D<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>; <SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">if</SPAN> (doc) =
+doc-&gt;QueryInterface(IID_IConnectionPointContainer, (<SPAN =
+style=3D"COLOR: blue">void</SPAN>**) &amp;cpc);
+      IConnectionPoint* cp=3D<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>; <SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">if</SPAN> (cpc) =
+cpc-&gt;FindConnectionPoint(DIID_HTMLDocumentEvents2, &amp;cp);
+      <SPAN style=3D"COLOR: blue">DWORD</SPAN> cookie; <SPAN =
+style=3D"COLOR: blue">HRESULT</SPAN> hr; <SPAN style=3D"COLOR: black; =
+FONT-WEIGHT: bold">if</SPAN> (cp) =
+hr=3Dcp-&gt;Advise(static_cast&lt;IDispatch*&gt;(this), &amp;cookie);
+      <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> (cp) =
+cp-&gt;Release(); <SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">if</SPAN> (cpc) cpc-&gt;Release(); <SPAN style=3D"COLOR: black; =
+FONT-WEIGHT: bold">if</SPAN> (idisp) idisp-&gt;Release();
+      <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> (!doc || =
+!doc2 || !win2 || hr!=3D<SPAN style=3D"COLOR: =
+rgb(0,10,100)">S_OK</SPAN>) {release(); <SPAN style=3D"COLOR: black; =
+FONT-WEIGHT: bold">return</SPAN> E_FAIL;}
+      <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">return</SPAN> =
+NOERROR;
+    }
+
+    <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> =
+(dispIdMember=3D=3DDISPID_HTMLDOCUMENTEVENTS_ONCLICK)
+    { <SPAN style=3D"FONT-STYLE: italic; COLOR: green">// This shows how =
+to respond to simple events.</SPAN>
+      MessageBox(<SPAN style=3D"COLOR: rgb(0,10,100)">0</SPAN>,_T(<SPAN =
+style=3D"COLOR: rgb(140,0,40)">"Try pressing some keys on the =
+keyboard!"</SPAN>),_T(<SPAN style=3D"COLOR: =
+rgb(140,0,40)">"BHO"</SPAN>),MB_OK);=20
+      <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">return</SPAN> =
+NOERROR;
+    }
+
+    <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> =
+(dispIdMember=3D=3DDISPID_HTMLDOCUMENTEVENTS_ONKEYDOWN)
+    { <SPAN style=3D"FONT-STYLE: italic; COLOR: green">// This shows how =
+to examine the "event object" of an event</SPAN>
+      IDispatch *param1=3D<SPAN style=3D"COLOR: rgb(0,10,100)">0</SPAN>; =
+<SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> =
+(pDispParams-&gt;cArgs=3D=3D<SPAN style=3D"COLOR: =
+rgb(0,10,100)">1</SPAN> &amp;&amp; (pDispParams-&gt;rgvarg)[<SPAN =
+style=3D"COLOR: rgb(0,10,100)">0</SPAN>].vt=3D=3DVT_DISPATCH) =
+param1=3D(pDispParams-&gt;rgvarg)[<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>].pdispVal;
+      IHTMLEventObj *pEvtObj=3D<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>; <SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">if</SPAN> (param1) param1-&gt;QueryInterface(IID_IHTMLEventObj, =
+(<SPAN style=3D"COLOR: blue">void</SPAN>**)&amp;pEvtObj);
+      <SPAN style=3D"COLOR: blue">long</SPAN> keycode; <SPAN =
+style=3D"COLOR: blue">HRESULT</SPAN> hr; <SPAN style=3D"COLOR: black; =
+FONT-WEIGHT: bold">if</SPAN> (pEvtObj) =
+hr=3DpEvtObj-&gt;get_keyCode(&amp;keycode);
+      <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> =
+(pEvtObj) pEvtObj-&gt;Release();
+      <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> =
+(!pEvtObj || hr!=3D<SPAN style=3D"COLOR: rgb(0,10,100)">S_OK</SPAN>) =
+<SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">return</SPAN> E_FAIL;
+      <SPAN style=3D"FONT-STYLE: italic; COLOR: green">// This shows how =
+to manipulate the CSS style of an element</SPAN>
+      <SPAN style=3D"COLOR: blue">int</SPAN> i=3Dkeycode-<SPAN =
+style=3D"COLOR: rgb(0,10,100)">32</SPAN>; <SPAN style=3D"COLOR: black; =
+FONT-WEIGHT: bold">if</SPAN> (i&lt;<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>) i=3D<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>; <SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">if</SPAN> (i&gt;<SPAN style=3D"COLOR: rgb(0,10,100)">63</SPAN>) =
+i=3D<SPAN style=3D"COLOR: rgb(0,10,100)">63</SPAN>; i*=3D<SPAN =
+style=3D"COLOR: rgb(0,10,100)">4</SPAN>;
+      wchar_t buf[<SPAN style=3D"COLOR: rgb(0,10,100)">100</SPAN>]; =
+wsprintfW(buf,L<SPAN style=3D"COLOR: =
+rgb(140,0,40)">"rgb(%i,%i,%i)"</SPAN>,i,<SPAN style=3D"COLOR: =
+rgb(0,10,100)">255</SPAN>-i,i/<SPAN style=3D"COLOR: =
+rgb(0,10,100)">2</SPAN>);
+      IHTMLElement *body=3D<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>; doc2-&gt;get_body(&amp;body);
+      IHTMLStyle *style=3D<SPAN style=3D"COLOR: rgb(0,10,100)">0</SPAN>; =
+<SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> (body) =
+body-&gt;get_style(&amp;style);
+      VARIANT v; v.vt=3DVT_BSTR; v.bstrVal=3Dbuf;
+      <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> (style) =
+style-&gt;put_backgroundColor(v);
+      <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> (style) =
+style-&gt;Release(); <SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">if</SPAN> (body) body-&gt;Release();
+      <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> (!body =
+|| !style) <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">return</SPAN> =
+E_FAIL;
+      <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">return</SPAN> =
+NOERROR;
+    }
+    <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">return</SPAN> =
+NOERROR;
+  }
+
+  <SPAN style=3D"FONT-STYLE: italic; COLOR: green">// =
+IObjectWithSite...</SPAN>
+  <SPAN style=3D"COLOR: blue">HRESULT</SPAN> <SPAN style=3D"COLOR: =
+blue">STDMETHODCALLTYPE</SPAN> GetSite(REFIID riid, <SPAN =
+style=3D"COLOR: blue">void</SPAN>** ppvSite) {<SPAN style=3D"COLOR: =
+black; FONT-WEIGHT: bold">return</SPAN> E_NOINTERFACE;}
+  <SPAN style=3D"COLOR: blue">HRESULT</SPAN> <SPAN style=3D"COLOR: =
+blue">STDMETHODCALLTYPE</SPAN> SetSite(IUnknown* iunk)
+  { <SPAN style=3D"FONT-STYLE: italic; COLOR: green">// This is called =
+by IE to plug us into the current web window</SPAN>
+    release();
+    iunk-&gt;QueryInterface(IID_IWebBrowser2, (<SPAN style=3D"COLOR: =
+blue">void</SPAN>**)&amp;webBrowser);
+    IConnectionPointContainer *cpc=3D<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>; =
+iunk-&gt;QueryInterface(IID_IConnectionPointContainer, (<SPAN =
+style=3D"COLOR: blue">void</SPAN>**)&amp;cpc);
+    IConnectionPoint* cp=3D<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>; <SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">if</SPAN> (cpc) =
+cpc-&gt;FindConnectionPoint(DIID_DWebBrowserEvents2, &amp;cp);
+    <SPAN style=3D"COLOR: blue">DWORD</SPAN> cookie; <SPAN =
+style=3D"COLOR: blue">HRESULT</SPAN> hr; <SPAN style=3D"COLOR: black; =
+FONT-WEIGHT: bold">if</SPAN> (cp) =
+hr=3Dcp-&gt;Advise(static_cast&lt;IDispatch*&gt;(this), &amp;cookie);
+    <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> =
+(!webBrowser || !cpc || !cp || hr!=3D<SPAN style=3D"COLOR: =
+rgb(0,10,100)">S_OK</SPAN>) {<SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">if</SPAN> (cp) cp-&gt;Release(); <SPAN style=3D"COLOR: black; =
+FONT-WEIGHT: bold">if</SPAN> (cpc) cpc-&gt;Release(); release(); <SPAN =
+style=3D"COLOR: black; FONT-WEIGHT: bold">return</SPAN> E_FAIL;}
+    <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">return</SPAN> <SPAN =
+style=3D"COLOR: rgb(0,10,100)">S_OK</SPAN>;
+  }
+
+  <SPAN style=3D"FONT-STYLE: italic; COLOR: green">// BHO...</SPAN>
+  BHO() : ref(<SPAN style=3D"COLOR: rgb(0,10,100)">0</SPAN>), =
+webBrowser(<SPAN style=3D"COLOR: rgb(0,10,100)">0</SPAN>), doc(<SPAN =
+style=3D"COLOR: rgb(0,10,100)">0</SPAN>), doc2(<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>), win2(<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>) {};
+  ~BHO() {release();}
+  <SPAN style=3D"COLOR: blue">void</SPAN> release() {<SPAN =
+style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> (webBrowser) =
+webBrowser-&gt;Release(); webBrowser=3D<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>; <SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">if</SPAN> (doc) doc-&gt;Release(); doc=3D<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>; <SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">if</SPAN> (doc2) doc2-&gt;Release(); doc2=3D<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>; <SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">if</SPAN> (win2) win2-&gt;Release(); win2=3D<SPAN style=3D"COLOR: =
+rgb(0,10,100)">0</SPAN>;}
+
+};
+
+
+
+
+
+
+
+<SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">class</SPAN> =
+MyClassFactory : <SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">public</SPAN> IClassFactory
+{ <SPAN style=3D"COLOR: blue">long</SPAN> ref;
+  <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">public:</SPAN>
+  <SPAN style=3D"FONT-STYLE: italic; COLOR: green">// IUnknown... (nb. =
+this class is instantiated statically, which is why Release() doesn't =
+delete it.)</SPAN>
+  <SPAN style=3D"COLOR: blue">HRESULT</SPAN> <SPAN style=3D"COLOR: =
+blue">STDMETHODCALLTYPE</SPAN> QueryInterface(REFIID riid, <SPAN =
+style=3D"COLOR: blue">void</SPAN> **ppv) {<SPAN style=3D"COLOR: black; =
+FONT-WEIGHT: bold">if</SPAN> (riid=3D=3DIID_IUnknown || =
+riid=3D=3DIID_IClassFactory) {*ppv=3Dthis; AddRef(); <SPAN =
+style=3D"COLOR: black; FONT-WEIGHT: bold">return</SPAN> <SPAN =
+style=3D"COLOR: rgb(0,10,100)">S_OK</SPAN>;} <SPAN style=3D"COLOR: =
+black; FONT-WEIGHT: bold">else</SPAN> <SPAN style=3D"COLOR: black; =
+FONT-WEIGHT: bold">return</SPAN> E_NOINTERFACE;}
+  ULONG <SPAN style=3D"COLOR: blue">STDMETHODCALLTYPE</SPAN> AddRef() =
+{InterlockedIncrement(&amp;gref); <SPAN style=3D"COLOR: black; =
+FONT-WEIGHT: bold">return</SPAN> InterlockedIncrement(&amp;ref);}
+  ULONG <SPAN style=3D"COLOR: blue">STDMETHODCALLTYPE</SPAN> Release() =
+{<SPAN style=3D"COLOR: blue">int</SPAN> tmp =3D =
+InterlockedDecrement(&amp;ref); InterlockedDecrement(&amp;gref); <SPAN =
+style=3D"COLOR: black; FONT-WEIGHT: bold">return</SPAN> tmp;}
+  <SPAN style=3D"FONT-STYLE: italic; COLOR: green">// =
+IClassFactory...</SPAN>
+  <SPAN style=3D"COLOR: blue">HRESULT</SPAN> <SPAN style=3D"COLOR: =
+blue">STDMETHODCALLTYPE</SPAN> LockServer(<SPAN style=3D"COLOR: =
+blue">BOOL</SPAN> b) {<SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">if</SPAN> (b) InterlockedIncrement(&amp;gref); <SPAN =
+style=3D"COLOR: black; FONT-WEIGHT: bold">else</SPAN> =
+InterlockedDecrement(&amp;gref); <SPAN style=3D"COLOR: black; =
+FONT-WEIGHT: bold">return</SPAN> <SPAN style=3D"COLOR: =
+rgb(0,10,100)">S_OK</SPAN>;}
+  <SPAN style=3D"COLOR: blue">HRESULT</SPAN> <SPAN style=3D"COLOR: =
+blue">STDMETHODCALLTYPE</SPAN> CreateInstance(LPUNKNOWN pUnkOuter, =
+REFIID riid, LPVOID *ppvObj) {*ppvObj =3D NULL; <SPAN style=3D"COLOR: =
+black; FONT-WEIGHT: bold">if</SPAN> (pUnkOuter) <SPAN style=3D"COLOR: =
+black; FONT-WEIGHT: bold">return</SPAN> CLASS_E_NOAGGREGATION; BHO =
+*bho=3D<SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">new</SPAN> BHO(); =
+bho-&gt;AddRef(); <SPAN style=3D"COLOR: blue">HRESULT</SPAN> =
+hr=3Dbho-&gt;QueryInterface(riid, ppvObj); bho-&gt;Release(); <SPAN =
+style=3D"COLOR: black; FONT-WEIGHT: bold">return</SPAN> hr;}
+  <SPAN style=3D"FONT-STYLE: italic; COLOR: green">// =
+MyClassFactory...</SPAN>
+  MyClassFactory() : ref(<SPAN style=3D"COLOR: rgb(0,10,100)">0</SPAN>) =
+{}
+};
+
+
+<SPAN style=3D"COLOR: blue">STDAPI</SPAN> DllGetClassObject(REFCLSID =
+rclsid, REFIID riid, LPVOID *ppvOut)
+{ static MyClassFactory factory; *ppvOut =3D NULL;
+  <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> =
+(rclsid=3D=3DBhoCLSID) {<SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">return</SPAN> factory.QueryInterface(riid,ppvOut);}
+  <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">else</SPAN> <SPAN =
+style=3D"COLOR: black; FONT-WEIGHT: bold">return</SPAN> =
+CLASS_E_CLASSNOTAVAILABLE;
+}
+
+<SPAN style=3D"COLOR: blue">STDAPI</SPAN> DllCanUnloadNow(<SPAN =
+style=3D"COLOR: blue">void</SPAN>)
+{ <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">return</SPAN> =
+(gref&gt;<SPAN style=3D"COLOR: rgb(0,10,100)">0</SPAN>)?S_FALSE:<SPAN =
+style=3D"COLOR: rgb(0,10,100)">S_OK</SPAN>;
+}
+
+<SPAN style=3D"COLOR: blue">STDAPI</SPAN> DllRegisterServer(<SPAN =
+style=3D"COLOR: blue">void</SPAN>)
+{ TCHAR fn[MAX_PATH]; GetModuleFileName(hInstance,fn,MAX_PATH);
+  SHSetValue(HKEY_CLASSES_ROOT,_T(<SPAN style=3D"COLOR: =
+rgb(140,0,40)">"CLSID\\"</SPAN>)BhoCLSIDs,_T(<SPAN style=3D"COLOR: =
+rgb(140,0,40)">""</SPAN>),REG_SZ,_T(<SPAN style=3D"COLOR: =
+rgb(140,0,40)">"BHO"</SPAN>),<SPAN style=3D"COLOR: =
+rgb(0,10,100)">4</SPAN>*<SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">sizeof</SPAN>(TCHAR));
+  SHSetValue(HKEY_CLASSES_ROOT,_T(<SPAN style=3D"COLOR: =
+rgb(140,0,40)">"CLSID\\"</SPAN>)BhoCLSIDs _T(<SPAN style=3D"COLOR: =
+rgb(140,0,40)">"\\InProcServer32"</SPAN>),_T(<SPAN style=3D"COLOR: =
+rgb(140,0,40)">""</SPAN>),REG_SZ,fn,((<SPAN style=3D"COLOR: =
+blue">int</SPAN>)_tcslen(fn)+<SPAN style=3D"COLOR: =
+rgb(0,10,100)">1</SPAN>)*<SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">sizeof</SPAN>(TCHAR));
+  SHSetValue(HKEY_CLASSES_ROOT,_T(<SPAN style=3D"COLOR: =
+rgb(140,0,40)">"CLSID\\"</SPAN>)BhoCLSIDs _T(<SPAN style=3D"COLOR: =
+rgb(140,0,40)">"\\InProcServer32"</SPAN>),_T(<SPAN style=3D"COLOR: =
+rgb(140,0,40)">"ThreadingModel"</SPAN>),REG_SZ,_T(<SPAN style=3D"COLOR: =
+rgb(140,0,40)">"Apartment"</SPAN>),<SPAN style=3D"COLOR: =
+rgb(0,10,100)">10</SPAN>*<SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">sizeof</SPAN>(TCHAR));
+  SHSetValue(HKEY_LOCAL_MACHINE,_T(<SPAN style=3D"COLOR: =
+rgb(140,0,40)">"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\B=
+rowser Helper Objects\\"</SPAN>)BhoCLSIDs,_T(<SPAN style=3D"COLOR: =
+rgb(140,0,40)">""</SPAN>),REG_SZ,_T(<SPAN style=3D"COLOR: =
+rgb(140,0,40)">""</SPAN>),<SPAN style=3D"COLOR: black; FONT-WEIGHT: =
+bold">sizeof</SPAN>(TCHAR));
+  <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">return</SPAN> <SPAN =
+style=3D"COLOR: rgb(0,10,100)">S_OK</SPAN>;
+}
+
+<SPAN style=3D"COLOR: blue">STDAPI</SPAN> DllUnregisterServer()
+{ SHDeleteKey(HKEY_CLASSES_ROOT,_T(<SPAN style=3D"COLOR: =
+rgb(140,0,40)">"CLSID\\"</SPAN>) BhoCLSIDs);
+  SHDeleteKey(HKEY_LOCAL_MACHINE,_T(<SPAN style=3D"COLOR: =
+rgb(140,0,40)">"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\B=
+rowser Helper Objects\\"</SPAN>)BhoCLSIDs);
+  <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">return</SPAN> <SPAN =
+style=3D"COLOR: rgb(0,10,100)">S_OK</SPAN>;
+}
+
+<SPAN style=3D"COLOR: blue">BOOL</SPAN> <SPAN style=3D"COLOR: =
+blue">WINAPI</SPAN> DllMain(HINSTANCE hinstDLL, <SPAN style=3D"COLOR: =
+blue">DWORD</SPAN> fdwReason, LPVOID lpvReserved)
+{ <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">if</SPAN> =
+(fdwReason=3D=3DDLL_PROCESS_ATTACH) hInstance=3DhinstDLL;
+  <SPAN style=3D"COLOR: black; FONT-WEIGHT: bold">return</SPAN> TRUE;
+}</PRE>
+<P editable=3D"code">Note: I've only intercepted a few of the possible =
+events.=20
+Others you might consider intercepting include DISPID_BEFORENAVIGATE=20
+DISPID_NAVIGATECOMPLETE DISPID_STATUSTEXTCHANGE DISPID_QUIT=20
+DISPID_DOWNLOADCOMPLETE DISPID_COMMANDSTATECHANGE DISPID_DOWNLOADBEGIN=20
+DISPID_NEWWINDOW DISPID_PROGRESSCHANGE DISPID_WINDOWMOVE =
+DISPID_WINDOWRESIZE=20
+DISPID_WINDOWACTIVATE DISPID_PROPERTYCHANGE DISPID_TITLECHANGE&nbsp;=20
+DISPID_FRAMEBEFORENAVIGATE DISPID_FRAMENAVIGATECOMPLETE =
+DISPID_FRAMENEWWINDOW=20
+DISPID_BEFORENAVIGATE2 DISPID_NEWWINDOW2 DISPID_NAVIGATECOMPLETE2 =
+DISPID_ONQUIT=20
+DISPID_ONVISIBLE DISPID_ONTOOLBAR DISPID_ONMENUBAR DISPID_ONSTATUSBAR=20
+DISPID_ONFULLSCREEN DISPID_ONTHEATERMODE DISPID_ONADDRESSBAR=20
+DISPID_RESETFIRSTBOOTMODE DISPID_RESETSAFEMODE =
+DISPID_REFRESHOFFLINEDESKTOP=20
+DISPID_ADDFAVORITE DISPID_ADDCHANNEL DISPID_ADDDESKTOPCOMPONENT=20
+DISPID_ISSUBSCRIBED DISPID_SHELLUIHELPERLAST</P></DIV>
+<DIV=20
+title=3D"Posted by h247093.resnet.cuhk.edu.hk on Mon, 28 Apr 2008 =
+12:49:37 -0400"=20
+date=3D"Mon, 28 Apr 2008 12:49:37 -0400"=20
+ip=3D"h247093.resnet.cuhk.edu.hk">Fantastic! This has been extremely =
+useful. Thank=20
+you very much!</DIV>
+<DIV=20
+title=3D"Posted by fs-203-114-10-66.f-secure.com on Tue, 12 Aug 2008 =
+04:12:51 -0400"=20
+date=3D"Tue, 12 Aug 2008 04:12:51 -0400" =
+ip=3D"fs-203-114-10-66.f-secure.com">Hi.=20
+This site has extremely informative contents. Thank you for =
+that.<BR>&nbsp;<BR>I=20
+was looking at your BHO code. Do you know how to intercept/get all URLS =
+that are=20
+in a website using the BHO? Could you let me know if you know it? My =
+email is=20
+Nicholas.G5@gmail.com<BR>&nbsp;<BR>Thanks.</DIV>
+<DIV=20
+title=3D"Posted by c-71-56-42-206.hsd1.ga.comcast.net on Thu,  9 Oct =
+2008 14:20:35 -0400"=20
+date=3D"Thu,  9 Oct 2008 14:20:35 -0400"=20
+ip=3D"c-71-56-42-206.hsd1.ga.comcast.net">Hi,<BR>&nbsp;<BR>I have found =
+a=20
+problem... I have rebuilt the project under vs2005, 32-bit, no Unicode, =
+and=20
+everything works fine on my <BR>&nbsp;<BR>win2003-32bit edition with=20
+IE6<BR>winxp-sp2-32bit edition with IE7<BR>&nbsp;<BR>but the BHO is not =
+loaded=20
+on my win2003-64bit x64 system. I use the 32bit version of IE7. =
+Everything looks=20
+good in the registry=20
+under<BR>&nbsp;<BR>HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Wind=
+ows\CurrentVersion\Explorer\Browser=20
+Helper=20
+Objects<BR>&nbsp;<BR>and<BR>&nbsp;<BR>HKEY_CLASSES_ROOT\Wow6432Node\CLSID=
+<BR>&nbsp;<BR>Additionally=20
+the BHO is visible in IE7 under Tools|Manage =
+Ad-ons<BR>&nbsp;<BR>Unfortunately=20
+the BHO cannot be activated and additional investigation with the use of =
+
+SysInternals Process Explorer shows that bho.dll is not in the list of =
+dlls=20
+shown for iexplore.exe. I have attempted to run the bho.dll under =
+debugger=20
+(using C:\Program Files (x86)\Internet Explorer\IEXPLORE.EXE as the =
+command) but=20
+none of the exports is reached.<BR>&nbsp;<BR>Any ideas? I really like =
+your=20
+compact code.<BR>&nbsp;<BR></DIV>
+<DIV=20
+title=3D"Posted by c-71-56-42-206.hsd1.ga.comcast.net on Thu,  9 Oct =
+2008 14:22:41 -0400"=20
+date=3D"Thu,  9 Oct 2008 14:22:41 -0400"=20
+ip=3D"c-71-56-42-206.hsd1.ga.comcast.net">Continued from the previous =
+comment - I=20
+can be reached at batkol@mindspring.com</DIV>
+<DIV=20
+title=3D"Posted by 58-27-180-244.wateen.net on Fri, 10 Oct 2008 05:19:17 =
+-0400"=20
+date=3D"Fri, 10 Oct 2008 05:19:17 -0400" =
+ip=3D"58-27-180-244.wateen.net">Good! this=20
+article is highly appreciated... <BR>Shakil Ahmad. PUCIT</DIV>
+<DIV title=3D"Posted by 60.12.235.27 on Wed, 31 Dec 2008 03:10:21 -0500" =
+
+date=3D"Wed, 31 Dec 2008 03:10:21 -0500" =
+ip=3D"60.12.235.27">Hello~<BR>i'm now=20
+learning BHO, <BR>if I want to collect the data witch users selected in =
+the=20
+webpage, <BR>how to realize it????<BR>&nbsp;<BR>please=20
+help!!<BR>&nbsp;<BR>raypp@qq.com<BR>&nbsp;<BR>many thx ;D</DIV>
+<DIV=20
+title=3D"Posted by user-64-9-234-230.googlewifi.com on Wed, 24 Feb 2010 =
+19:21:05 -0500"=20
+date=3D"Wed, 24 Feb 2010 19:21:05 -0500"=20
+ip=3D"user-64-9-234-230.googlewifi.com">Great stuff..<BR>&nbsp;<BR>I'm =
+trying to=20
+make the bho set a cookie when certain url is loaded. <BR>&nbsp;<BR>if =
+you=20
+happen to have any advice I'll be great full.<BR>&nbsp;<BR>Thanks, =
+Shai.</DIV>
+<DIV=20
+title=3D"Posted by acl1-1222bts.gw.smartbro.net on Wed,  9 Feb 2011 =
+14:33:11 -0500"=20
+date=3D"Wed,  9 Feb 2011 14:33:11 -0500" =
+ip=3D"acl1-1222bts.gw.smartbro.net"></DIV>
+<DIV ip=3D"*"><SPAN=20
+style=3D"FONT-FAMILY: Trebuchet MS; FLOAT: right; FONT-SIZE: smaller"><A =
+
+onclick=3D"return addcomment(this);"=20
+href=3D"http://www.wischik.com/lu/programmer/">add&nbsp;comment</A>&nbsp;=
+&nbsp;<A=20
+onclick=3D"return editcomment(this);"=20
+href=3D"http://www.wischik.com/lu/programmer/">edit&nbsp;comment</A></SPA=
+N>Please=20
+add comments here</DIV></DIV>
+<DIV id=3Dbottom></DIV></BODY></HTML>
+
+------=_NextPart_000_0000_01CBE3CE.1E3355C0
+Content-Type: image/gif
+Content-Transfer-Encoding: base64
+Content-Location: http://www.wischik.com/lu/programmer/index-rss.gif
+
+R0lGODlhDAAMAOYAAAAAAP////715fusL/mrMfuuM/qtNP+0Nv64Qv7BW/y+Wv7CXPzCZ/zIc/3J
+dP7OgP3NgP/qyPSdIPWfIfeiJPmqM/mwQPm8ZfzGc/rHfvzLgP3u2P705e+QEu6PEuyOEu+QE++R
+E+6PE+2PFO2QFPCSFvGWGfGVGvCUGu+SGvKYH/ScIfKaIfKZIvSdI/GZJvSgKvSfLvakMvewTPnB
+cvvSmPrQmP3z5f/68/758vCSGu2NGvCTHeWKG++SHe2PIOyPIfCXJe6UKfKbLfGbL/KcMPGbNPOi
+PPSoSva1Y/rPmP3y5f/47+uLIOyNIeqJIN6GIe2RJ+yOJ+6RKu6TLu6XNO+bOu+mVfKtYvXCif3x
+5OqLLOuPM/O9iPbHlv/9++aEKuiJMvCze/ro1+N9KOJ+LOaFMeB2J+aQUN5yJv///wAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH5
+BAEAAGoALAAAAAAMAAwAAAeQgB0iUVVGLyUgHYodIztXVkQxMC4mIYpAUl8BSzUWBQMTlilCSTYb
+ARwJBwQqICBBShcVDTg4CjJDPB0tAagOCzg3R1RTHSwWEAIBGDQBWVtcHSsMDwgcN0VaY2BhHRJM
+ARoZAVheAWRmHRMROTNIAV1iAWhlIBQGMkVUW2BkZ2lQPJA4gUKHjx9Omjzp8SEQADs=
+
+------=_NextPart_000_0000_01CBE3CE.1E3355C0
+Content-Type: text/css;
+	charset="big5"
+Content-Transfer-Encoding: quoted-printable
+Content-Location: http://www.wischik.com/lu/programmer/index.css
+
+HTML {
+	PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-LEFT: 0px; PADDING-RIGHT: =
+0px; PADDING-TOP: 0px
+}
+BODY {
+	PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-LEFT: 0px; PADDING-RIGHT: =
+0px; PADDING-TOP: 0px
+}
+#htmleditable0 {
+	PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-LEFT: 0px; PADDING-RIGHT: =
+0px; PADDING-TOP: 0px
+}
+BODY {
+	FONT: smaller Verdana; COLOR: #555
+}
+UL {
+	LIST-STYLE-POSITION: outside; PADDING-BOTTOM: 0px; LIST-STYLE-TYPE: =
+disc; MARGIN: 0px 24px; PADDING-LEFT: 0px; PADDING-RIGHT: 0px; =
+PADDING-TOP: 0px
+}
+A {
+	COLOR: #00f; TEXT-DECORATION: none
+}
+A:visited {
+	COLOR: #00f; TEXT-DECORATION: none
+}
+A:hover {
+	BACKGROUND-COLOR: yellow; COLOR: #00f; TEXT-DECORATION: underline
+}
+A:active {
+	COLOR: #00f
+}
+H1 {
+	PADDING-BOTTOM: 8px; MARGIN: 0px; PADDING-LEFT: 30px; PADDING-RIGHT: =
+8px; FONT: bold 18pt Arial; COLOR: white; PADDING-TOP: 20px
+}
+H1 A {
+	BACKGROUND-COLOR: transparent; COLOR: white
+}
+H1 A:hover {
+	BACKGROUND-COLOR: transparent; COLOR: white
+}
+H1 A:visited {
+	BACKGROUND-COLOR: transparent; COLOR: white
+}
+H1 A:active {
+	BACKGROUND-COLOR: transparent; COLOR: white
+}
+H2 {
+	FONT-SIZE: large
+}
+H3 {
+	FONT-SIZE: medium
+}
+LI {
+	MARGIN-BOTTOM: 0.8ex
+}
+IMG {
+	BORDER-BOTTOM: 0px; BORDER-LEFT: 0px; BORDER-TOP: 0px; BORDER-RIGHT: =
+0px
+}
+DIV[ip] {
+	PADDING-BOTTOM: 0.5ex; BACKGROUND-COLOR: rgb(230,230,255); MARGIN-TOP: =
+1ex; PADDING-LEFT: 0.5ex; PADDING-RIGHT: 0.5ex; PADDING-TOP: 0.5ex
+}
+PRE[editable=3D'code'] {
+	PADDING-BOTTOM: 1ex; BACKGROUND-COLOR: #ffffcc; MARGIN: 0px; =
+PADDING-LEFT: 1ex; PADDING-RIGHT: 1ex; FONT-SIZE: smaller; PADDING-TOP: =
+1ex
+}
+#top {
+	BORDER-BOTTOM: #ccf 0px; TEXT-ALIGN: left; BORDER-LEFT: #ccf 0px; =
+MARGIN: 10px auto 0px; WIDTH: 770px; BACKGROUND: url(index-top.gif) =
+no-repeat; HEIGHT: 68px; OVERFLOW: hidden; BORDER-TOP: #ccf 0px; =
+BORDER-RIGHT: #ccf 0px
+}
+#top A {
+	MARGIN: 16px; FLOAT: right
+}
+#top H1 A {
+	MARGIN: 0px; FLOAT: none
+}
+#middle {
+	BORDER-BOTTOM: transparent 0px solid; PADDING-BOTTOM: 0px; MARGIN: 0px =
+auto; PADDING-LEFT: 20px; WIDTH: 730px; PADDING-RIGHT: 20px; BACKGROUND: =
+url(index-middle.gif) repeat-y center top; PADDING-TOP: 1px
+}
+#bottom {
+	PADDING-BOTTOM: 8px; MARGIN: 0px auto; PADDING-LEFT: 0px; WIDTH: 770px; =
+PADDING-RIGHT: 0px; BACKGROUND: url(index-bottom.gif) no-repeat center =
+top; HEIGHT: 50px; PADDING-TOP: 0px
+}
+
+------=_NextPart_000_0000_01CBE3CE.1E3355C0
+Content-Type: application/octet-stream
+Content-Transfer-Encoding: quoted-printable
+Content-Location: http://www.wischik.com/editable/editable.js
+
+var oldonload=3Dwindow.onload;window.onload=3Dfunction()=0A=
+{ var e=3Ddocument.createElement('div');=0A=
+  e.innerHTML=3D'<a id=3D"editable_loader" =
+style=3D"top:0;right:3px;position:absolute;font-family:Courier =
+New;font-size:10pt;text-decoration:none;opacity:0.4;'+(navigator.appName=3D=
+=3D'Netscape'?'':'filter:alpha(opacity=3D40);')+'" =
+href=3D"javascript:editable1();">&dagger;</span>';=0A=
+  =
+document.body.appendChild(e.childNodes[0]);if(document.cookie.match(/^(.*=
+;( )?)?(editable=3Don)(;.*)?$/))editable1();=0A=
+};=0A=
+=0A=
+function editable1(c)=0A=
+{ if(window.editable_path){if(c)c();return;}=0A=
+  var z=3Ddocument.getElementsByTagName("script");for(var =
+i=3D0;i<z.length;i++)if(z[i].src.match(/editable.js/))break;=0A=
+  if(i=3D=3Dz.length)return; =
+z=3Dz[i].src.replace(/editable.js/,'editable1.js');=0A=
+  var e=3Ddocument.createElement("script");e.src=3Dz;if(c)e.onload=3Dc;=0A=
+  document.getElementsByTagName("head")[0].appendChild(e);=0A=
+}=0A=
+=0A=
+function addcomment(c){editable1(function(){addcomment1(c);});return =
+false;}=0A=
+function editcomment(c){editable1(function(){editcomment1(c);});return =
+false;}=0A=
+
+------=_NextPart_000_0000_01CBE3CE.1E3355C0--

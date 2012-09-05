@@ -1,0 +1,38 @@
+A. register the COM object NtuWebmailPlugIn contained in NtuWebmailPlugIn.dll by typing regsvr32 D:\Desktop\...\NtuWebmailPlugIn.dll in the cmd.exe
+
+            We now only need to register!!
+
+
+B. register the COM object NtuWebmailPlugIn{2C5A4662-F642-40E4-9F1A-61852714ECDD} as an IE toolbar button:
+     1.Create a valid GUID.
+       You can use Guidgen.exe from Microsoft Visual Studio, or Uuidgen.exe from the Windows Software Development Kit (SDK).
+
+     2.Create a new key (using the GUID as the name) in the registry under: 
+     HKEY_LOCAL_MACHINE
+          Software
+               Microsoft
+                    Internet Explorer
+                         Extensions
+                              {GUID}
+     {GUID} is the valid GUID that you created in step 1.
+
+     3. Create the following string values in the registry under the created new key 
+        ButtonText - Set the value to the label you want for the toolbar button: HKEY_LOCAL_MACHINE\Software\Microsoft\Internet Explorer\Extensions\{GUID}\ButtonText
+
+        <HotIcon> - Set the full path of the .ico file that contains three color icons: HKEY_LOCAL_MACHINE\Software\Microsoft\Internet Explorer\Extensions\{GUID}\HotIcon
+
+        In our case, the key's value should be D:\Desktop\Exchange Student\NtuWebmailPlugIn\Debug\NtuWebmailPlugIn.dll,101
+        Here the "101" and its preceding "," means to find the icon file inside the .dll's resource file with the ID: 101
+
+        <Icon> - Set the full path of the .ico file that contains the three aravscale icons: HKEY_LOCAL_MACHINE\Software\Microsoft\Internet Explorer\Extensions\{GUID}\Icon
+
+        <Optional>. To provide support for multiple native languages (like French or Japanese), complete the following steps to support different native languages: 
+          a. Determine the LCID of the native language you want to support. See Language Identifier Constants and Strings for a complete list. 
+          b. b.Create a new key, Lang####, using the LCID from the previous step in place of "####" in the registry as follows: HKEY_LOCAL_MACHINE\Software\Microsoft\Internet Explorer\Extensions\{GUID}\Lang####
+          For example, the key name should be Lang0411 for a Japanese implementation, since the LCID for Japanese is 0411.
+
+       <> Create a new string value, CLSID, in the registry as follows: HKEY_LOCAL_MACHINE\Software\Microsoft\Internet Explorer\Extensions\{GUID}\CLSID
+            Set the value of CLSID equal to {1FBA04EE-3024-11d2-8F1F-0000F87ABD16} to specify the CLSID_Shell_ToolbarExtExec extension class.
+
+       <> Create a new string value, ClsidExtension, in the registry as follows: HKEY_LOCAL_MACHINE\Software\Microsoft\Internet Explorer\Extensions\{GUID}\ClsidExtension
+          Set the value of ClsidExtension equal to the GUID of the COM object {2C5A4662-F642-40E4-9F1A-61852714ECDD}.
